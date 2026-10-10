@@ -10,3 +10,6 @@
 *.crt
 certs/
 client-vpn/
+# Simulador
+simulator/.venv/
+__pycache__/

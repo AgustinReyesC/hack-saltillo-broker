@@ -36,6 +36,31 @@ de su tarea (`hack-saltillo-api-task`); las URLs le llegan por Terraform buscand
 Los nombres de las colas son el contrato con la API: si cambias `project_name` o las llaves de
 `sqs.tf`, actualiza también `infra/main.tf` de `hack-saltillo-api`.
 
+## Simulador contra SQS de AWS
+
+`simulator/` es el simulador del kit adaptado a estas colas. El dataset (`data/events.jsonl`) no se
+versiona aquí: se lee del kit (`~/HACKSALTILLO/hackathon-inventario-kit`, o `KIT_DIR` / `EVENTS`).
+
+```bash
+alias simulador="$HOME/HACKSALTILLO/broker/hack-saltillo-broker/simulator/run.sh"   # en ~/.zshrc
+simulador                  # 1a vez manda el dataset; después solo levanta el panel (http://localhost:8090)
+SPEED=0 simulador          # el dataset sin pausas, en segundos
+simulador --force-replay   # mandar el dataset completo otra vez
+```
+
+- **Una sola carga.** El avance se guarda en SSM Parameter Store (`/hack-saltillo/simulator/state`),
+  compartido por todo el equipo. Si se detiene a medias (Ctrl+C), la siguiente vez retoma donde se
+  quedó; completo, ya no lo vuelve a mandar. La primera vez pregunta a la API qué parte del dataset ya
+  procesó y empieza desde ahí.
+- **Orden.** Los mensajes salen en el orden del dataset, también entre colas, y nada se queda en un
+  lote esperando: antes, al detener el simulador se perdían los que no completaban un lote de 10.
+- **Duplicados.** El dataset trae 65 entregas repetidas a propósito (regla 19). Las colas FIFO usan
+  `event_id` como `MessageDeduplicationId`, pero SQS solo deduplica dentro de 5 minutos; quien
+  garantiza que un duplicado no cambie nada es la API (`event_inbox.event_id` es llave primaria).
+  Por eso reenviar el dataset es seguro y no hay que borrar la base para conectarlo.
+- **Panel.** Los ids y códigos de las órdenes que abre el panel continúan entre arranques (también
+  en SSM), para que una orden nueva no reutilice el id de otra ya procesada.
+
 ## SQS local y Kafka para compatibilidad
 
 El Compose del kit levanta ElasticMQ en `localhost:9324`; el simulador del Compose usa
