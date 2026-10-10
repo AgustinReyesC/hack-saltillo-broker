@@ -22,7 +22,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 resource "aws_iam_role" "github_deploy" {
   name        = "inventory-broker-github-deploy"
-  description = "Deploy Terraform del broker MSK desde la rama autorizada de GitHub Actions"
+  description = "Deploy Terraform de colas SQS desde la rama autorizada de GitHub Actions"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -47,29 +47,6 @@ resource "aws_iam_role" "github_deploy" {
 resource "aws_iam_role_policy_attachment" "power_user" {
   role       = aws_iam_role.github_deploy.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
-}
-
-resource "aws_iam_role_policy" "service_linked_role" {
-  name = "allow-msk-service-linked-role"
-  role = aws_iam_role.github_deploy.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "iam:CreateServiceLinkedRole",
-        "iam:DeleteServiceLinkedRole",
-        "iam:GetServiceLinkedRoleDeletionStatus"
-      ]
-      Resource = "arn:aws:iam::*:role/aws-service-role/kafka.amazonaws.com/AWSServiceRoleForKafka*"
-      Condition = {
-        StringEquals = {
-          "iam:AWSServiceName" = "kafka.amazonaws.com"
-        }
-      }
-    }]
-  })
 }
 
 resource "aws_s3_bucket" "terraform_state" {

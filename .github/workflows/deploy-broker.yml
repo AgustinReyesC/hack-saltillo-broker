@@ -36,14 +36,10 @@ jobs:
           AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
           AWS_REGION: ${{ vars.AWS_REGION }}
           TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-          VPN_SERVER_CERTIFICATE_ARN: ${{ vars.VPN_SERVER_CERTIFICATE_ARN }}
-          VPN_CLIENT_ROOT_CERTIFICATE_ARN: ${{ vars.VPN_CLIENT_ROOT_CERTIFICATE_ARN }}
         run: |
           test -n "$AWS_ROLE_TO_ASSUME"
           test -n "$AWS_REGION"
           test -n "$TF_STATE_BUCKET"
-          test -n "$VPN_SERVER_CERTIFICATE_ARN"
-          test -n "$VPN_CLIENT_ROOT_CERTIFICATE_ARN"
 
       - name: Terraform init
         env:
@@ -63,8 +59,6 @@ jobs:
       - name: Terraform plan
         env:
           TF_VAR_aws_region: ${{ vars.AWS_REGION }}
-          TF_VAR_vpn_server_certificate_arn: ${{ vars.VPN_SERVER_CERTIFICATE_ARN }}
-          TF_VAR_vpn_client_root_certificate_arn: ${{ vars.VPN_CLIENT_ROOT_CERTIFICATE_ARN }}
         run: terraform plan -out=tfplan
 
       - name: Terraform apply
@@ -72,6 +66,5 @@ jobs:
 
       - name: Publish connection outputs
         run: |
-          echo "MSK bootstrap: $(terraform output -raw bootstrap_brokers_sasl_scram_tls)"
-          echo "Client VPN endpoint: $(terraform output -raw client_vpn_endpoint_id)"
-          echo "SCRAM secret ARN: $(terraform output -raw scram_secret_arn)"
+          echo "SQS queue URLs:"
+          terraform output -json sqs_queue_urls

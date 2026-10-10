@@ -1,3 +1,1 @@
 aws_region                       = "us-west-2"
-vpn_server_certificate_arn      = "arn:aws:acm:us-west-2:123456789012:certificate/REPLACE_ME"
-vpn_client_root_certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/REPLACE_ME"

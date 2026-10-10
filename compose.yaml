@@ -25,3 +25,14 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    ports:
+      - "9324:9324"
+    volumes:
+      - ./elasticmq.conf:/opt/elasticmq.conf:ro
+      - elasticmq-data:/data
+
+volumes:
+  elasticmq-data:
