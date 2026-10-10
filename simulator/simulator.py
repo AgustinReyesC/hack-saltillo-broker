@@ -23,7 +23,9 @@ duplicados por `event_id`, así que reenviar no cambia los datos).
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import hmac
 import json
 import os
 import signal
@@ -485,33 +487,76 @@ class Shop:
 def make_handler(shop: Shop):
     page = (HERE / "panel.html").read_bytes()
 
+    # Desplegado detrás de CloudFront: el panel vive en BASE_PATH (/simulador) y pide contraseña
+    # (PANEL_PASSWORD, Basic Auth con cualquier usuario). En local las dos van vacías.
+    base_path = os.environ.get("BASE_PATH", "").rstrip("/")
+    password = os.environ.get("PANEL_PASSWORD", "")
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):  # silencio
             pass
 
-        def _json(self, status: int, payload) -> None:
-            body = json.dumps(payload, ensure_ascii=False).encode()
+        def _send(self, status: int, body: bytes, content_type: str) -> None:
             self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
 
-        def do_GET(self):
-            if self.path in ("/", "/index.html"):
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+        def _json(self, status: int, payload) -> None:
+            self._send(status, json.dumps(payload, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+
+        def _route(self) -> str | None:
+            """Ruta sin BASE_PATH, o None si ya se respondió (redirección o falta de contraseña)."""
+            path = self.path.split("?", 1)[0]
+            if base_path:
+                if path == base_path:  # sin la "/" final las rutas relativas del panel no resuelven
+                    self.send_response(301)
+                    self.send_header("Location", f"{base_path}/")
+                    self.end_headers()
+                    return None
+                path = path[len(base_path):] if path.startswith(f"{base_path}/") else path
+            if path == "/health":  # el balanceador revisa sin contraseña
+                return path
+            if password and not self._authorized():
+                self.send_response(401)
+                self.send_header("WWW-Authenticate", 'Basic realm="Simulador del taller", charset="UTF-8"')
+                self.send_header("Content-Length", "0")
                 self.end_headers()
-                self.wfile.write(page)
-            elif self.path == "/api/state":
+                return None
+            return path
+
+        def _authorized(self) -> bool:
+            header = self.headers.get("Authorization", "")
+            if not header.startswith("Basic "):
+                return False
+            try:
+                _, _, given = base64.b64decode(header[6:]).decode().partition(":")
+            except Exception:
+                return False
+            return hmac.compare_digest(given.encode(), password.encode())
+
+        def do_GET(self):
+            path = self._route()
+            if path is None:
+                return
+            if path in ("/", "/index.html"):
+                self._send(200, page, "text/html; charset=utf-8")
+            elif path == "/health":
+                self._json(200, {"status": "ok", "replay": shop.replay})
+            elif path == "/api/state":
                 self._json(200, shop.state())
             else:
                 self._json(404, {"detail": "no existe"})
 
         def do_POST(self):
+            path = self._route()
+            if path is None:
+                return
             length = int(self.headers.get("Content-Length") or 0)
             body = json.loads(self.rfile.read(length) or b"{}")
-            parts = self.path.strip("/").split("/")
+            parts = path.strip("/").split("/")
             try:
                 if parts == ["api", "orders"]:
                     self._json(201, shop.open_order(int(body["model_id"])))

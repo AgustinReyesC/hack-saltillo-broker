@@ -61,6 +61,29 @@ simulador --force-replay   # mandar el dataset completo otra vez
 - **Panel.** Los ids y códigos de las órdenes que abre el panel continúan entre arranques (también
   en SSM), para que una orden nueva no reutilice el id de otra ya procesada.
 
+### Panel en línea para el equipo
+
+El panel también corre en AWS: `https://d1q2oyfa8vt6h9.cloudfront.net/simulador/` (cualquier
+usuario, la contraseña compartida). Es una tarea Fargate (ARM64) en el cluster de la API; el ALB la
+enruta por `/simulador*` y CloudFront (repo `hack-saltillo-ui`) la publica por HTTPS. Publica con
+su rol de IAM, sin access keys. Las órdenes que abre viven en la memoria de esa única tarea.
+
+```bash
+# Contraseña del panel
+aws secretsmanager get-secret-value --secret-id hack-saltillo-simulator/panel-password --query SecretString --output text
+
+# Desplegar cambios del simulador (el dataset entra a la imagen desde el kit, no desde este repo)
+REPO=501264524998.dkr.ecr.us-east-1.amazonaws.com/hack-saltillo-simulator; TAG=$(date +%Y%m%d%H%M%S)
+aws ecr get-login-password --region us-east-1 | docker login -u AWS --password-stdin ${REPO%%/*}
+docker buildx build --platform linux/arm64 --provenance=false \
+  --build-context kit=$HOME/HACKSALTILLO/hackathon-inventario-kit -t $REPO:$TAG --push simulator
+terraform -chdir=simulator/infra init -backend-config=backend.hcl
+terraform -chdir=simulator/infra apply -var image_tag=$TAG
+```
+
+No corras al mismo tiempo el panel local para la carga inicial y el de AWS: los dos comparten el
+avance del dataset en SSM.
+
 ## SQS local y Kafka para compatibilidad
 
 El Compose del kit levanta ElasticMQ en `localhost:9324`; el simulador del Compose usa
