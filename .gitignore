@@ -1,0 +1,12 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+*.ovpn
+*.pem
+*.key
+*.crt
+certs/
+client-vpn/
