@@ -1,3 +1,5 @@
 aws_region       = "us-west-2"
 github_repository = "OWNER/REPOSITORY"
+github_owner_id = ""
+github_repository_id = ""
 github_branch     = "main"

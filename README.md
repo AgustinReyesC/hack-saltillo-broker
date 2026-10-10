@@ -46,8 +46,9 @@ inventario no se ha migrado todavía a SQS.
 ## 1. Bootstrap único de Terraform y GitHub OIDC
 
 El bootstrap crea el bucket S3 cifrado/versionado del state, el proveedor OIDC y un rol limitado al
-repositorio y rama indicados. Ejecútalo una vez con un perfil local autorizado para crear IAM y S3.
-Requiere AWS CLI, Terraform y credenciales locales.
+repositorio y rama indicados. Para repositorios GitHub creados después del 15 de julio de 2026,
+configura también `github_owner_id` y `github_repository_id`, porque GitHub usa esos IDs en el `sub`
+inmutable del token OIDC. Ejecútalo con un perfil local autorizado para crear IAM y S3.
 
 ```bash
 cp bootstrap/terraform.tfvars.example bootstrap/terraform.tfvars

@@ -8,6 +8,23 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_owner_id" {
+  description = "ID numérico inmutable del propietario GitHub; requerido para repositorios con subject OIDC inmutable."
+  type        = string
+  default     = ""
+}
+
+variable "github_repository_id" {
+  description = "ID numérico inmutable del repositorio GitHub; requerido para repositorios con subject OIDC inmutable."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = (var.github_owner_id == "" && var.github_repository_id == "") || (var.github_owner_id != "" && var.github_repository_id != "")
+    error_message = "Configura juntos github_owner_id y github_repository_id, o deja ambos vacíos para el formato OIDC anterior."
+  }
+}
+
 variable "github_branch" {
   description = "Rama autorizada a asumir el rol OIDC."
   type        = string

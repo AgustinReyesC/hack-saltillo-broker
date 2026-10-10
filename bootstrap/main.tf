@@ -10,8 +10,12 @@ data "tls_certificate" "github" {
 
 locals {
   state_bucket_name = var.state_bucket_name != "" ? var.state_bucket_name : "inventory-broker-tfstate-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
-  github_subject    = "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
-  github_oidc_arn   = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+  github_owner      = split("/", var.github_repository)[0]
+  github_repo       = split("/", var.github_repository)[1]
+  github_subject = var.github_owner_id != "" ? (
+    "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}"
+  ) : "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"
+  github_oidc_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {

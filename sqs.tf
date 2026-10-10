@@ -6,6 +6,7 @@ locals {
     "shop-purchasing"  = "shop.purchasing"
     "inventory-events" = "inventory.events"
     "inventory-dlq"    = "inventory.dlq"
+    "notifications"    = "notifications"
   }
 }
 
