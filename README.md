@@ -16,9 +16,25 @@ condiciones en tu cuenta y región. Cada cola retiene mensajes hasta 14 días. E
 retención histórica de Kafka de 90 días ni permite reconstruir el dataset de seis semanas solo desde
 SQS. Las colas FIFO garantizan el orden dentro de cada grupo de mensajes, no entre colas.
 
-Este cambio tampoco convierte automáticamente consumidores Kafka a SQS. El servicio de inventario y
-las pruebas de contrato actuales usan Kafka; para conectar ese servicio a estas colas hay que adaptar
-su consumo. El broker Kafka local de Redpanda sigue disponible para desarrollo y pruebas existentes.
+El broker Kafka local de Redpanda sigue disponible para desarrollo y pruebas existentes.
+
+## Conexiones en AWS (us-east-1)
+
+La API de inventario (`hack-saltillo-api`, ECS Fargate) ya consume y publica en estas colas con el rol
+de su tarea (`hack-saltillo-api-task`); las URLs le llegan por Terraform buscando las colas por nombre.
+
+| Cola | Escribe | Lee |
+| --- | --- | --- |
+| `inventory-broker-shop-catalog.fifo` | Simulador del taller | API |
+| `inventory-broker-shop-work-orders.fifo` | Simulador del taller | API |
+| `inventory-broker-shop-inspections.fifo` | Simulador del taller | API |
+| `inventory-broker-shop-purchasing.fifo` | Simulador del taller | API |
+| `inventory-broker-notifications.fifo` | Mensajes del usuario al agente | API → Lambda `hack-saltillo-events-agent` |
+| `inventory-broker-inventory-events.fifo` | API (eventos `stock.*`) | Otros consumidores |
+| `inventory-broker-inventory-dlq.fifo` | API (eventos no procesables) | Revisión manual |
+
+Los nombres de las colas son el contrato con la API: si cambias `project_name` o las llaves de
+`sqs.tf`, actualiza también `infra/main.tf` de `hack-saltillo-api`.
 
 ## SQS local y Kafka para compatibilidad
 
